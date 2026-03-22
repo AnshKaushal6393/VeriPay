@@ -1,0 +1,77 @@
+enum Role {
+  ADMIN
+  MANAGER
+  VIEWER
+}
+
+enum InvoiceStatus {
+  PENDING
+  PENDING_APPROVAL
+  APPROVED
+  PAID
+  OVERDUE
+  DISPUTED
+  REJECTED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  AWAITING_APPROVAL
+  RESOLVED
+  REJECTED
+}
+
+enum DisputeType {
+  QUANTITY
+  PRICE
+  DUPLICATE
+  SERVICE
+  OTHER
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(VIEWER)
+  auditLogs AuditLog[]
+  comments  DisputeComment[]
+  createdAt DateTime @default(now()) 
+}
+
+model Vendor {
+  id            String   @id @default(cuid())
+  name          String
+  contactEmail  String
+  category      String
+  paymentTerms  Int
+  riskScore     Float    @default(0)
+  invoices      Invoice[]
+  createdAt     DateTime @default(now())
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  vendorId      String
+  vendor        Vendor        @relation(fields:[vendorId],references:[id])
+  amount        Decimal       @db.Decimal(12, 2)
+  currency      String        @default("INR")
+  dueDate       DateTime
+  status        InvoiceStatus @default(PENDING)
+  slaDeadline   DateTime
+  slaBreach     DateTime
+  riskScore     Float         @default(0)
+  disputes      Dispute[]
+  auditLogs     AuditLog[]
+  createdAt     DateTime      @default(now())
+}

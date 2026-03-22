@@ -27,3 +27,9 @@
 - Current npm audit summary after install: `11 vulnerabilities (5 moderate, 6 high)`
 - Added backend scripts so `npm run dev` uses `nodemon index.js` and `npm start` uses `node index.js`
 - Added backend entry file at `server/index.js` with basic Express app setup and health routes
+- Prisma starter files added manually because `prisma/` already existed: `server/prisma/schema.prisma` and `server/.env`
+- Updated Prisma 7 config: moved `DATABASE_URL` handling to `server/prisma.config.ts` and removed `url` from `server/prisma/schema.prisma`
+- Added Prisma enums in `server/prisma/schema.prisma`: `Role`, `InvoiceStatus`, `DisputeStatus`, and `DisputeType`
+- Added initial `User` model in `server/prisma/schema.prisma` with role, auth, and timestamp fields
+- Added initial `Vendor` model in `server/prisma/schema.prisma` with contact and tax fields
+- Added initial `Invoice` model in `server/prisma/schema.prisma` with vendor relation and `InvoiceStatus`
