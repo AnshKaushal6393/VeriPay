@@ -33,3 +33,8 @@
 - Added initial `User` model in `server/prisma/schema.prisma` with role, auth, and timestamp fields
 - Added initial `Vendor` model in `server/prisma/schema.prisma` with contact and tax fields
 - Added initial `Invoice` model in `server/prisma/schema.prisma` with vendor relation and `InvoiceStatus`
+- Added `Dispute`, `DisputeComment`, and `AuditLog` models in `server/prisma/schema.prisma`
+- Added backend register route and controller: `POST /api/auth/register`
+- Generated Prisma Client successfully and verified the Neon database is in sync with the current schema using `prisma migrate dev`
+- Added backend login route and JWT auth middleware for protected requests
+- Added role-based authorization middleware to allow only selected user roles on protected routes

@@ -75,3 +75,38 @@ model Invoice {
   auditLogs     AuditLog[]
   createdAt     DateTime      @default(now())
 }
+
+model Dispute {
+  id         String           @id @default(cuid())
+  invoiceId  String
+  invoice    Invoice          @relation(fields: [invoiceId], references: [id])
+  type       DisputeType
+  reason     String
+  status     DisputeStatus    @default(OPEN)
+  resolvedAt DateTime?
+  comments   DisputeComment[]
+  createdAt  DateTime         @default(now())
+}
+
+model DisputeComment {
+  id         String    @id @default(cuid())
+  disputeId  String
+  userId     String
+  dispute    Dispute   @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id])
+  comment    String
+  createdAt  DateTime  @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  invoiceId  String?
+  user       User     @relation(fields: [userId], references: [id])
+  invoice    Invoice? @relation(fields: [invoiceId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json
+  createdAt  DateTime @default(now())
+}
