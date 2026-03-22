@@ -38,3 +38,7 @@
 - Generated Prisma Client successfully and verified the Neon database is in sync with the current schema using `prisma migrate dev`
 - Added backend login route and JWT auth middleware for protected requests
 - Added role-based authorization middleware to allow only selected user roles on protected routes
+- Added React auth context in the frontend to store `token` and `user` state with local persistence
+- Fixed Tailwind 4 PostCSS configuration to use `@tailwindcss/postcss`
+- Added frontend `ProtectedRoute` component to redirect unauthenticated users
+- Added shared Axios client configuration to automatically attach the stored JWT token on requests
