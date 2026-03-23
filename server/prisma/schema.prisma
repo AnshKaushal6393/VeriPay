@@ -53,8 +53,10 @@ model Vendor {
   id            String   @id @default(cuid())
   name          String
   contactEmail  String
+  contactPhone  String?
   category      String
   paymentTerms  Int
+  address       String?
   riskScore     Float    @default(0)
   invoices      Invoice[]
   createdAt     DateTime @default(now())
