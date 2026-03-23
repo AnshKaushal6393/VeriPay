@@ -59,7 +59,10 @@ function VendorDetailPage() {
       <AppHeader
         eyebrow="VeriPay / Vendor Detail"
         title="Vendor Profile"
-        navLinks={[{ label: 'Back to vendors', to: '/vendors' }]}
+        navLinks={[
+          { label: 'Vendors', to: '/vendors' },
+          { label: 'Invoices', to: '/invoices' },
+        ]}
         user={user || { name: 'Workspace user', role: 'Protected', email: '-' }}
         isAuthenticated
         onLogout={logout}

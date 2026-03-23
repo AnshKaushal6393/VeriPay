@@ -68,6 +68,90 @@ const validateInvoicePayload = (payload) => {
   return null
 }
 
+const listInvoices = async (req, res) => {
+  try {
+    const {
+      status = '',
+      vendorId = '',
+      dateFrom = '',
+      dateTo = '',
+    } = req.query
+
+    const where = {}
+
+    if (status.trim()) {
+      const normalizedStatus = status.trim().toUpperCase()
+
+      if (!allowedStatuses.has(normalizedStatus)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invoice status is invalid',
+        })
+      }
+
+      where.status = normalizedStatus
+    }
+
+    if (vendorId.trim()) {
+      where.vendorId = vendorId.trim()
+    }
+
+    if (dateFrom || dateTo) {
+      where.dueDate = {}
+
+      if (dateFrom) {
+        if (!isValidDate(dateFrom)) {
+          return res.status(400).json({
+            success: false,
+            message: 'dateFrom must be a valid date',
+          })
+        }
+
+        where.dueDate.gte = normalizeDate(dateFrom)
+      }
+
+      if (dateTo) {
+        if (!isValidDate(dateTo)) {
+          return res.status(400).json({
+            success: false,
+            message: 'dateTo must be a valid date',
+          })
+        }
+
+        where.dueDate.lte = normalizeDate(dateTo)
+      }
+    }
+
+    const invoices = await prisma.invoice.findMany({
+      where,
+      include: {
+        vendor: {
+          select: {
+            id: true,
+            name: true,
+            category: true,
+          },
+        },
+      },
+      orderBy: {
+        dueDate: 'asc',
+      },
+    })
+
+    return res.status(200).json({
+      success: true,
+      count: invoices.length,
+      invoices,
+    })
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch invoices',
+      error: error.message,
+    })
+  }
+}
+
 const createInvoice = async (req, res) => {
   try {
     const validationError = validateInvoicePayload(req.body)
@@ -152,4 +236,5 @@ const createInvoice = async (req, res) => {
 
 module.exports = {
   createInvoice,
+  listInvoices,
 }

@@ -308,7 +308,7 @@ function VendorsPage() {
           navLinks={[
             { label: 'Overview', to: '/', end: true },
             { label: 'Vendors', to: '/vendors' },
-            { label: 'Invoices', href: '/' },
+            { label: 'Invoices', to: '/invoices' },
             { label: 'Disputes', href: '/' },
           ]}
           primaryAction={

@@ -102,3 +102,6 @@
 
 - Added a reusable PDF parser utility in server/utils/pdfParser.js that can parse either an uploaded file path or a raw buffer with pdf-parse and returns normalized text, page count, metadata, and document info for future invoice extraction workflows
 - Added a dedicated protected PDF upload route at `POST /api/uploads/pdf` using multipart field name `pdfFile`, backed by a separate upload controller that stores the PDF, parses it immediately with the shared parser utility, and returns both file metadata and extracted text details
+- Added a protected invoice listing API at `GET /api/invoices` with filters for `status`, `vendorId`, `dateFrom`, and `dateTo`, and built a new frontend invoice directory page with status/vendor/date-range controls, KPI summary cards, and a filterable invoice table wired into the shared workspace app shell
+
+- Added a reusable InvoiceForm with dual manual-entry and PDF-upload tabs, drag-and-drop PDF parsing preview, parsed-to-manual prefill confirmation, editable item list, and safe user review before invoice submission without auto-submitting extracted PDF data
