@@ -94,7 +94,11 @@
 
 - Updated the shared vendor risk display so null scores now render as 'No history yet' instead of showing a numeric value, making unknown vendor risk explicit across the UI
 - Added a manual invoice creation backend module with a protected `POST /api/invoices` route for `ADMIN` and `MANAGER`, including vendor existence checks, amount/date/status validation, sensible SLA defaults, and Prisma-backed invoice creation
+- Configured Multer for invoice PDF uploads with a reusable PDF-only middleware, 10MB file-size limit, disk storage under `server/uploads/invoices`, cleanup on failed invoice creation, and route integration on `POST /api/invoices` using the multipart field name `invoicePdf`
 
 - Refined the vendor filter meta line by replacing raw internal sort keys like 'createdAt' with human-readable labels and slightly increasing its contrast so the toolbar summary reads cleanly in the UI
 
 - Normalized vendor risk on backend read responses so vendors with fewer than 3 invoices are returned with riskScore = null, preventing old stored zero values from being shown as if they were real low-risk history
+
+- Added a reusable PDF parser utility in server/utils/pdfParser.js that can parse either an uploaded file path or a raw buffer with pdf-parse and returns normalized text, page count, metadata, and document info for future invoice extraction workflows
+- Added a dedicated protected PDF upload route at `POST /api/uploads/pdf` using multipart field name `pdfFile`, backed by a separate upload controller that stores the PDF, parses it immediately with the shared parser utility, and returns both file metadata and extracted text details

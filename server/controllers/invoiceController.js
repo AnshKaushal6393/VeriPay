@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma')
+const fs = require('fs')
 
 const allowedStatuses = new Set([
   'PENDING',
@@ -16,6 +17,18 @@ const isValidDate = (value) => {
 }
 
 const normalizeDate = (value) => new Date(value)
+
+const cleanupUploadedFile = (file) => {
+  if (!file?.path) {
+    return
+  }
+
+  try {
+    fs.unlinkSync(file.path)
+  } catch (_error) {
+    // Best-effort cleanup only.
+  }
+}
 
 const validateInvoicePayload = (payload) => {
   const { vendorId, amount, dueDate, currency, status, slaDeadline, slaBreach } = payload
@@ -60,6 +73,7 @@ const createInvoice = async (req, res) => {
     const validationError = validateInvoicePayload(req.body)
 
     if (validationError) {
+      cleanupUploadedFile(req.file)
       return res.status(400).json({
         success: false,
         message: validationError,
@@ -76,6 +90,7 @@ const createInvoice = async (req, res) => {
     })
 
     if (!vendor) {
+      cleanupUploadedFile(req.file)
       return res.status(404).json({
         success: false,
         message: 'Vendor not found',
@@ -115,8 +130,18 @@ const createInvoice = async (req, res) => {
       success: true,
       message: 'Invoice created successfully',
       invoice,
+      document: req.file
+        ? {
+            filename: req.file.filename,
+            originalName: req.file.originalname,
+            mimeType: req.file.mimetype,
+            size: req.file.size,
+            path: req.file.path,
+          }
+        : null,
     })
   } catch (error) {
+    cleanupUploadedFile(req.file)
     return res.status(500).json({
       success: false,
       message: 'Failed to create invoice',

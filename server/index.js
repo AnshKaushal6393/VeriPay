@@ -8,6 +8,7 @@ dotenv.config({ path: require('path').resolve(__dirname, '.env') })
 
 const authRoutes = require('./routes/authRoutes')
 const invoiceRoutes = require('./routes/invoices')
+const uploadRoutes = require('./routes/uploads')
 const vendorRoutes = require('./routes/vendors')
 
 const app = express()
@@ -17,6 +18,7 @@ app.use(cors())
 app.use(express.json())
 app.use('/api/auth', authRoutes)
 app.use('/api/invoices', invoiceRoutes)
+app.use('/api/uploads', uploadRoutes)
 app.use('/api/vendors', vendorRoutes)
 
 app.get('/', (req, res) => {
