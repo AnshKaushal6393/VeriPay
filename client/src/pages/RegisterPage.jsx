@@ -1,9 +1,9 @@
 import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import api from '../lib/api'
+import { notifyError, notifySuccess } from '../lib/notify'
 import AuthCardIntro from '../components/AuthCardIntro'
 
 function RegisterPage() {
@@ -42,11 +42,15 @@ function RegisterPage() {
         token: data.token,
         user: data.user,
       })
-      toast.success('Account created successfully')
+      notifySuccess(
+        'Account created',
+        'Your VeriPay workspace account is ready to use.',
+      )
       navigate('/vendors', { replace: true })
     },
     onError: (error) => {
-      toast.error(
+      notifyError(
+        'Registration failed',
         error?.response?.data?.message ||
           'Unable to create account. Please try again.',
       )
@@ -67,7 +71,7 @@ function RegisterPage() {
         />
 
         <form
-          className="login-form"
+          className="login-form auth-form-panel"
           onSubmit={handleSubmit((values) => registerMutation.mutate(values))}
         >
           <label className="control">

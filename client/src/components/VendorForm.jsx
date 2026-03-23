@@ -10,7 +10,16 @@ const categoryOptions = [
   'Services',
 ]
 
-function VendorForm({ mode = 'create', initialData, onSubmit, onCancel, isSubmitting }) {
+function VendorForm({
+  mode = 'create',
+  initialData,
+  onSubmit,
+  onCancel,
+  isSubmitting,
+  serverError = '',
+  successMessage = '',
+  disableClose = false,
+}) {
   const title = useMemo(
     () => (mode === 'edit' ? 'Edit vendor' : 'Create vendor'),
     [mode],
@@ -29,7 +38,6 @@ function VendorForm({ mode = 'create', initialData, onSubmit, onCancel, isSubmit
       contactPhone: '',
       paymentTerms: '30',
       address: '',
-      riskScore: '0',
     },
   })
 
@@ -41,7 +49,6 @@ function VendorForm({ mode = 'create', initialData, onSubmit, onCancel, isSubmit
       contactPhone: initialData?.contactPhone || '',
       paymentTerms: String(initialData?.paymentTerms ?? '30'),
       address: initialData?.address || '',
-      riskScore: String(initialData?.riskScore ?? '0'),
     })
   }, [initialData, reset])
 
@@ -50,16 +57,35 @@ function VendorForm({ mode = 'create', initialData, onSubmit, onCancel, isSubmit
       <div className="form-header">
         <div>
           <p className="eyebrow">Vendor form</p>
-          <h3>{title}</h3>
+          <h3 id="vendor-form-title">{title}</h3>
           <p className="form-copy">
             Capture supplier identity, contact coverage, and commercial terms in one
             structured record.
           </p>
         </div>
-        <button type="button" className="row-action secondary" onClick={onCancel}>
+        <button
+          type="button"
+          className="row-action secondary"
+          onClick={onCancel}
+          disabled={disableClose}
+        >
           Close
         </button>
       </div>
+
+      {serverError ? (
+        <div className="notice-panel error-panel form-feedback-panel" role="alert">
+          <strong>Unable to save vendor</strong>
+          <p>{serverError}</p>
+        </div>
+      ) : null}
+
+      {successMessage ? (
+        <div className="notice-panel success-panel form-feedback-panel" role="status">
+          <strong>{mode === 'edit' ? 'Vendor updated' : 'Vendor created'}</strong>
+          <p>{successMessage}</p>
+        </div>
+      ) : null}
 
       <div className="form-section">
         <div className="form-section-header">
@@ -153,7 +179,7 @@ function VendorForm({ mode = 'create', initialData, onSubmit, onCancel, isSubmit
       <div className="form-section">
         <div className="form-section-header">
           <p className="form-section-title">Commercial terms</p>
-          <span className="form-section-meta">Payment and risk profile</span>
+          <span className="form-section-meta">Payment profile</span>
         </div>
 
         <div className="form-grid">
@@ -174,39 +200,27 @@ function VendorForm({ mode = 'create', initialData, onSubmit, onCancel, isSubmit
               <small className="field-error">{errors.paymentTerms.message}</small>
             ) : null}
           </label>
-
-          <label className="control form-control">
-            <span>Risk score</span>
-            <input
-              type="number"
-              step="0.1"
-              {...register('riskScore', {
-                required: 'Enter a risk score between 0 and 10.',
-                min: {
-                  value: 0,
-                  message: 'Risk score cannot be below 0.',
-                },
-                max: {
-                  value: 10,
-                  message: 'Risk score cannot be above 10.',
-                },
-              })}
-              placeholder="4.5"
-            />
-            {errors.riskScore ? (
-              <small className="field-error">{errors.riskScore.message}</small>
-            ) : null}
-          </label>
         </div>
       </div>
 
       <div className="form-actions">
-        <button type="button" className="row-action secondary" onClick={onCancel}>
+        <button
+          type="button"
+          className="row-action secondary"
+          onClick={onCancel}
+          disabled={disableClose}
+        >
           Cancel
         </button>
-        <button type="submit" className="action-button form-submit-button" disabled={isSubmitting}>
+        <button
+          type="submit"
+          className="action-button form-submit-button"
+          disabled={isSubmitting || disableClose || Boolean(successMessage)}
+        >
           {isSubmitting
             ? 'Saving...'
+            : successMessage
+              ? 'Saved'
             : mode === 'edit'
               ? 'Save changes'
               : 'Create vendor'}

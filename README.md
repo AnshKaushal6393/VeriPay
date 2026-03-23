@@ -69,3 +69,32 @@
 - Standardized the frontend design system across pages by unifying spacing tokens, border-radius usage, shared button and chip treatments, and heading scale so the app feels visually consistent end-to-end
 - Refined the vendor workspace finish by compressing the header layout, combining account controls into a tighter session cluster, reducing skeleton row density, and increasing visual separation between the filter toolbar and main table
 - Refined the vendor workspace further by converting nav into clearer tab-like controls, folding logout into the account card, slimming the inline error banner, muting non-primary KPI cards, and tightening the stack above the main table
+- Upgraded the login and register experience with a stronger auth card hierarchy, premium brand treatment, a dedicated auth form panel, and tighter footer link styling to match the interior product UI
+- Improved backend diagnostics by adding Prisma-aware auth error handling and a dedicated /api/health/db endpoint to verify live database connectivity
+- Improved database health diagnostics further by mapping raw Prisma connectivity failures to clearer 503 database-unreachable responses
+- Fixed the vendor create/edit UX by opening the reusable vendor form in a modal overlay with backdrop, escape-key close support, and immediate visual feedback from the New vendor action
+- Reworked the shared app header into a cleaner two-row layout with separated navigation and action zones to improve responsiveness and reduce header crowding across screen sizes
+- Fixed the New vendor modal glitch by rendering the form through a portal at the document level, adding proper dialog semantics, and tightening responsive behavior for the header, KPI strip, filter toolbar, and modal/table layout across laptop and tablet widths
+
+- Fixed toast visibility above the vendor modal by elevating the toast layer above the backdrop and giving notifications a solid theme-aware surface so success/error messages stay readable during create/edit flows
+
+- Improved the vendor create/edit modal flow with inline server error feedback, temporary success confirmation before close, and guarded escape/backdrop closing while a save is in progress
+
+- Fixed vendor create failures by regenerating the Prisma client after schema changes, hid create/edit actions from VIEWER users on the vendor page, and upgraded toast styling to a more polished enterprise notification treatment
+
+- Fixed duplicate vendor creation from the modal by adding a hard client-side submit lock, keeping the form disabled through the short success-confirmation window, and resetting the lock only after close or error
+
+- Replaced default string toasts with a shared branded notification component across login, register, and vendor flows so success/error messages now use a consistent premium enterprise layout with title, message, and tone-specific icon treatment
+
+- Added route-aware toast placement, dismiss controls, and subtle enter/exit motion so notifications now feel integrated with both auth and workspace screens instead of using one generic placement everywhere
+
+- Removed riskScore from the reusable vendor form and stopped accepting manual riskScore values in vendor create/update controller payloads so risk remains system-controlled instead of user-entered
+
+- Changed Vendor.riskScore in Prisma schema from a required Float defaulting to 0 into an optional Float so unknown vendor risk remains null instead of pretending to be perfect history, and updated the vendor UI to display unknown risk honestly instead of collapsing null to zero
+
+- Updated the shared vendor risk display so null scores now render as 'No history yet' instead of showing a numeric value, making unknown vendor risk explicit across the UI
+- Added a manual invoice creation backend module with a protected `POST /api/invoices` route for `ADMIN` and `MANAGER`, including vendor existence checks, amount/date/status validation, sensible SLA defaults, and Prisma-backed invoice creation
+
+- Refined the vendor filter meta line by replacing raw internal sort keys like 'createdAt' with human-readable labels and slightly increasing its contrast so the toolbar summary reads cleanly in the UI
+
+- Normalized vendor risk on backend read responses so vendors with fewer than 3 invoices are returned with riskScore = null, preventing old stored zero values from being shown as if they were real low-risk history

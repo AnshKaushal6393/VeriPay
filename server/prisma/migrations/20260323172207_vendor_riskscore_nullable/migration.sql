@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Vendor" ALTER COLUMN "riskScore" DROP NOT NULL,
+ALTER COLUMN "riskScore" DROP DEFAULT;

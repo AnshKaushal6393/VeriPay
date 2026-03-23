@@ -1,9 +1,10 @@
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { useDeferredValue, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import api from '../lib/api'
+import { notifyError, notifySuccess } from '../lib/notify'
 import AppHeader from '../components/AppHeader'
 import RiskBadge from '../components/RiskBadge'
 import SectionHeader from '../components/SectionHeader'
@@ -18,6 +19,14 @@ const categoryOptions = [
   'Operations',
   'Services',
 ]
+
+const sortLabels = {
+  createdAt: 'Newest first',
+  name: 'Vendor name',
+  category: 'Category',
+  paymentTerms: 'Payment terms',
+  riskScore: 'Risk score',
+}
 
 async function fetchVendors({ queryKey }) {
   const [, params] = queryKey
@@ -34,7 +43,12 @@ function VendorsPage() {
   const [formMode, setFormMode] = useState('create')
   const [selectedVendor, setSelectedVendor] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [formSuccess, setFormSuccess] = useState('')
+  const submitLockRef = useRef(false)
   const deferredSearch = useDeferredValue(search)
+  const canManageVendors =
+    user?.role === 'ADMIN' || user?.role === 'MANAGER'
 
   const queryParams = useMemo(() => {
     const params = {}
@@ -50,6 +64,9 @@ function VendorsPage() {
   })
 
   const vendors = data?.vendors || []
+  const vendorsWithKnownRisk = vendors.filter(
+    (vendor) => vendor.riskScore !== null && vendor.riskScore !== undefined,
+  )
   const leadCategory =
     Object.entries(
       vendors.reduce((accumulator, vendor) => {
@@ -58,14 +75,14 @@ function VendorsPage() {
       }, {}),
     ).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unassigned'
 
-  const averageRisk = vendors.length
+  const averageRisk = vendorsWithKnownRisk.length
     ? (
-        vendors.reduce((sum, vendor) => sum + (vendor.riskScore || 0), 0) /
-        vendors.length
+        vendorsWithKnownRisk.reduce((sum, vendor) => sum + vendor.riskScore, 0) /
+        vendorsWithKnownRisk.length
       ).toFixed(1)
-    : '0.0'
+    : 'Unknown'
 
-  const highRiskCount = vendors.filter((vendor) => (vendor.riskScore || 0) >= 7).length
+  const highRiskCount = vendorsWithKnownRisk.filter((vendor) => vendor.riskScore >= 7).length
 
   const sortedVendors = useMemo(() => {
     const items = [...vendors]
@@ -74,7 +91,11 @@ function VendorsPage() {
       if (sortBy === 'name') return left.name.localeCompare(right.name)
       if (sortBy === 'category') return left.category.localeCompare(right.category)
       if (sortBy === 'paymentTerms') return left.paymentTerms - right.paymentTerms
-      if (sortBy === 'riskScore') return (right.riskScore || 0) - (left.riskScore || 0)
+      if (sortBy === 'riskScore') {
+        const leftScore = left.riskScore ?? -1
+        const rightScore = right.riskScore ?? -1
+        return rightScore - leftScore
+      }
       return new Date(right.createdAt) - new Date(left.createdAt)
     })
 
@@ -82,12 +103,14 @@ function VendorsPage() {
   }, [sortBy, vendors])
 
   const getRiskLabel = (score) => {
+    if (score === null || score === undefined) return 'Unknown'
     if (score >= 7) return 'High'
     if (score >= 4) return 'Watch'
     return 'Stable'
   }
 
   const getOperationalStatus = (score, paymentTerms) => {
+    if (score === null || score === undefined) return 'Review'
     if (score >= 7) return 'Escalated'
     if (paymentTerms > 45) return 'Review'
     return 'Active'
@@ -104,24 +127,50 @@ function VendorsPage() {
       return response.data
     },
     onSuccess: () => {
+      setFormError('')
+      setFormSuccess(
+        formMode === 'edit'
+          ? 'The vendor record has been updated and the directory is refreshing.'
+          : 'The new vendor has been added and the directory is refreshing.',
+      )
       queryClient.invalidateQueries({ queryKey: ['vendors'] })
-      toast.success(formMode === 'edit' ? 'Vendor updated' : 'Vendor created')
-      closeForm()
+      notifySuccess(
+        formMode === 'edit' ? 'Vendor updated' : 'Vendor created',
+        formMode === 'edit'
+          ? 'Changes are saved and the vendor directory is refreshing.'
+          : 'The new supplier record has been added to the directory.',
+      )
     },
     onError: (mutationError) => {
       const message =
         mutationError?.response?.data?.message ||
         'Unable to save vendor. Please try again.'
-      toast.error(message)
+      submitLockRef.current = false
+      setFormError(message)
+      notifyError('Unable to save vendor', message)
     },
   })
 
   const openCreateForm = () => {
     if (!isAuthenticated) {
-      toast.error('Please log in to create a vendor')
+      notifyError(
+        'Login required',
+        'Please log in before creating a vendor record.',
+      )
       return
     }
 
+    if (!canManageVendors) {
+      notifyError(
+        'Permission denied',
+        'Only admins and managers can create vendors.',
+      )
+      return
+    }
+
+    setFormError('')
+    setFormSuccess('')
+    submitLockRef.current = false
     setFormMode('create')
     setSelectedVendor(null)
     setIsFormOpen(true)
@@ -129,95 +178,199 @@ function VendorsPage() {
 
   const openEditForm = (vendor) => {
     if (!isAuthenticated) {
-      toast.error('Please log in to edit vendors')
+      notifyError(
+        'Login required',
+        'Please log in before editing vendor records.',
+      )
       return
     }
 
+    if (!canManageVendors) {
+      notifyError(
+        'Permission denied',
+        'Only admins and managers can edit vendors.',
+      )
+      return
+    }
+
+    setFormError('')
+    setFormSuccess('')
+    submitLockRef.current = false
     setFormMode('edit')
     setSelectedVendor(vendor)
     setIsFormOpen(true)
   }
 
   const closeForm = () => {
+    if (vendorMutation.isPending) {
+      return
+    }
+
     setIsFormOpen(false)
     setSelectedVendor(null)
+    setFormError('')
+    setFormSuccess('')
+    submitLockRef.current = false
   }
 
+  useEffect(() => {
+    if (!isFormOpen) {
+      return undefined
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !vendorMutation.isPending) {
+        closeForm()
+      }
+    }
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isFormOpen, vendorMutation.isPending])
+
+  useEffect(() => {
+    if (!formSuccess) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsFormOpen(false)
+      setSelectedVendor(null)
+      setFormError('')
+      setFormSuccess('')
+      submitLockRef.current = false
+    }, 900)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [formSuccess])
+
   const handleVendorSubmit = (values) => {
+    if (submitLockRef.current || vendorMutation.isPending || formSuccess) {
+      return
+    }
+
+    submitLockRef.current = true
+    setFormError('')
+    setFormSuccess('')
     vendorMutation.mutate({
       ...values,
       paymentTerms: Number(values.paymentTerms),
-      riskScore: Number(values.riskScore),
     })
   }
 
-  return (
-    <main className="app-shell">
-      <AppHeader
-        eyebrow="VeriPay / Vendors"
-        title="Vendor Directory"
-        subtitle="Monitor partner health, search operational records, and move quickly on vendor actions."
-        navLinks={[
-          { label: 'Overview', to: '/', end: true },
-          { label: 'Vendors', to: '/vendors' },
-          { label: 'Invoices', href: '/' },
-          { label: 'Disputes', href: '/' },
-        ]}
-        primaryAction={
-          <button
-            type="button"
-            className="action-button"
-            onClick={openCreateForm}
-            disabled={!isAuthenticated}
+  const formModal =
+    isFormOpen && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className="form-modal-backdrop"
+            role="presentation"
+            onClick={() => {
+              if (!vendorMutation.isPending) {
+                closeForm()
+              }
+            }}
           >
-            New vendor
-          </button>
-        }
-        user={user}
-        isAuthenticated={isAuthenticated}
-        onLogout={logout}
-      />
+            <div
+              className="form-shell form-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="vendor-form-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <VendorForm
+                mode={formMode}
+                initialData={selectedVendor}
+                onSubmit={handleVendorSubmit}
+                onCancel={closeForm}
+                isSubmitting={vendorMutation.isPending}
+                serverError={formError}
+                successMessage={formSuccess}
+                disableClose={vendorMutation.isPending || Boolean(formSuccess)}
+              />
+            </div>
+          </div>,
+          document.body,
+        )
+      : null
 
-      <section className="kpi-row compact-kpis">
-        <article className="kpi-card">
-          <span className="kpi-label">Total vendors</span>
-          <strong>{vendors.length}</strong>
-          <p className="kpi-detail">Tracked suppliers in the current workspace.</p>
-        </article>
-        <article className="kpi-card">
-          <span className="kpi-label">Leading category</span>
-          <strong>{leadCategory}</strong>
-          <p className="kpi-detail">Largest concentration across the vendor network.</p>
-        </article>
-        <article className="kpi-card">
-          <span className="kpi-label">Average risk</span>
-          <strong>{averageRisk}</strong>
-          <p className="kpi-detail">
-            {highRiskCount} flagged {highRiskCount === 1 ? 'vendor' : 'vendors'} above threshold.
-          </p>
-        </article>
-        <article className="kpi-card status-card">
-          <span className="kpi-label">Board status</span>
-          <strong>{isFetching ? 'Syncing' : 'Live'}</strong>
-          <p className="kpi-detail">
-            {isFetching
-              ? 'Refreshing the operational view now.'
-              : 'Workspace feed is ready for review.'}
-          </p>
-        </article>
-      </section>
-
-      <SurfaceSection>
-        <SectionHeader
-          eyebrow="Vendor table"
-          title="Records"
-          actions={
-            <>
-              <span className="meta-chip">{vendors.length} records</span>
-              <span className="meta-chip muted">{leadCategory}</span>
-            </>
+  return (
+    <>
+      <main className="app-shell">
+        <AppHeader
+          eyebrow="VeriPay / Vendors"
+          title="Vendor Directory"
+          subtitle="Monitor partner health, search operational records, and move quickly on vendor actions."
+          navLinks={[
+            { label: 'Overview', to: '/', end: true },
+            { label: 'Vendors', to: '/vendors' },
+            { label: 'Invoices', href: '/' },
+            { label: 'Disputes', href: '/' },
+          ]}
+          primaryAction={
+            <button
+              type="button"
+              className="action-button"
+              onClick={openCreateForm}
+              disabled={!canManageVendors}
+              title={
+                canManageVendors
+                  ? 'Create vendor'
+                  : 'Only admins and managers can create vendors'
+              }
+            >
+              New vendor
+            </button>
           }
+          user={user}
+          isAuthenticated={isAuthenticated}
+          onLogout={logout}
         />
+
+        <section className="kpi-row compact-kpis">
+          <article className="kpi-card">
+            <span className="kpi-label">Total vendors</span>
+            <strong>{vendors.length}</strong>
+            <p className="kpi-detail">Tracked suppliers in the current workspace.</p>
+          </article>
+          <article className="kpi-card">
+            <span className="kpi-label">Leading category</span>
+            <strong>{leadCategory}</strong>
+            <p className="kpi-detail">Largest concentration across the vendor network.</p>
+          </article>
+          <article className="kpi-card">
+            <span className="kpi-label">Average risk</span>
+            <strong>{averageRisk}</strong>
+            <p className="kpi-detail">
+              {highRiskCount} flagged {highRiskCount === 1 ? 'vendor' : 'vendors'} above threshold.
+            </p>
+          </article>
+          <article className="kpi-card status-card">
+            <span className="kpi-label">Board status</span>
+            <strong>{isFetching ? 'Syncing' : 'Live'}</strong>
+            <p className="kpi-detail">
+              {isFetching
+                ? 'Refreshing the operational view now.'
+                : 'Workspace feed is ready for review.'}
+            </p>
+          </article>
+        </section>
+
+        <SurfaceSection>
+          <SectionHeader
+            eyebrow="Vendor table"
+            title="Records"
+            actions={
+              <>
+                <span className="meta-chip">{vendors.length} records</span>
+                <span className="meta-chip muted">{leadCategory}</span>
+              </>
+            }
+          />
 
         <div className="summary-strip">
           <span className="summary-chip">High risk: {highRiskCount}</span>
@@ -226,12 +379,13 @@ function VendorsPage() {
         </div>
 
         <div className="filter-toolbar">
-          <div className="filter-toolbar-header">
-            <p className="filter-toolbar-title">Filter workspace</p>
-            <span className="filter-toolbar-meta">
-              {category === 'All Categories' ? 'All categories' : category} / {sortBy}
-            </span>
-          </div>
+            <div className="filter-toolbar-header">
+              <p className="filter-toolbar-title">Filter workspace</p>
+              <span className="filter-toolbar-meta">
+                {category === 'All Categories' ? 'All categories' : category} /{' '}
+                {sortLabels[sortBy] || 'Newest first'}
+              </span>
+            </div>
 
           <div className="filter-row">
             <label className="control control-search search-grow">
@@ -382,7 +536,7 @@ function VendorsPage() {
                   sortedVendors.map((vendor) => (
                     <tr
                       key={vendor.id}
-                      className={(vendor.riskScore || 0) >= 7 ? 'table-row-high-risk' : ''}
+                      className={vendor.riskScore >= 7 ? 'table-row-high-risk' : ''}
                     >
                       <td className="vendor-column">
                         <div className="vendor-cell">
@@ -399,12 +553,12 @@ function VendorsPage() {
                       </td>
                       <td className="status-column">
                         <span
-                          className={`status-tag ${getOperationalStatus(
-                            vendor.riskScore || 0,
+                            className={`status-tag ${getOperationalStatus(
+                            vendor.riskScore,
                             vendor.paymentTerms,
                           ).toLowerCase()}`}
                         >
-                          {getOperationalStatus(vendor.riskScore || 0, vendor.paymentTerms)}
+                          {getOperationalStatus(vendor.riskScore, vendor.paymentTerms)}
                         </span>
                       </td>
                       <td className="category-column">
@@ -417,9 +571,9 @@ function VendorsPage() {
                         <div className="risk-stack">
                           <RiskBadge score={vendor.riskScore} />
                           <span
-                            className={`risk-tag ${(vendor.riskScore || 0) >= 7 ? 'high' : ''}`}
+                            className={`risk-tag ${vendor.riskScore >= 7 ? 'high' : ''}`}
                           >
-                            {getRiskLabel(vendor.riskScore || 0)}
+                            {getRiskLabel(vendor.riskScore)}
                           </span>
                         </div>
                       </td>
@@ -455,7 +609,7 @@ function VendorsPage() {
                           <button
                             type="button"
                             className="row-action secondary"
-                            disabled={!isAuthenticated}
+                            disabled={!canManageVendors}
                             onClick={() => openEditForm(vendor)}
                           >
                             <span className="row-action-icon" aria-hidden="true">
@@ -521,19 +675,10 @@ function VendorsPage() {
           </div>
         ) : null}
 
-        {isFormOpen ? (
-          <div className="form-shell">
-            <VendorForm
-              mode={formMode}
-              initialData={selectedVendor}
-              onSubmit={handleVendorSubmit}
-              onCancel={closeForm}
-              isSubmitting={vendorMutation.isPending}
-            />
-          </div>
-        ) : null}
-      </SurfaceSection>
-    </main>
+        </SurfaceSection>
+      </main>
+      {formModal}
+    </>
   )
 }
 

@@ -1,9 +1,9 @@
 import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import api from '../lib/api'
+import { notifyError, notifySuccess } from '../lib/notify'
 import AuthCardIntro from '../components/AuthCardIntro'
 
 function LoginPage() {
@@ -32,11 +32,15 @@ function LoginPage() {
         token: data.token,
         user: data.user,
       })
-      toast.success('Login successful')
+      notifySuccess(
+        'Login successful',
+        'Your workspace session is active and ready to use.',
+      )
       navigate(location.state?.from?.pathname || '/vendors', { replace: true })
     },
     onError: (error) => {
-      toast.error(
+      notifyError(
+        'Sign-in failed',
         error?.response?.data?.message || 'Unable to log in. Please try again.',
       )
     },
@@ -56,7 +60,7 @@ function LoginPage() {
         />
 
         <form
-          className="login-form"
+          className="login-form auth-form-panel"
           onSubmit={handleSubmit((values) => loginMutation.mutate(values))}
         >
           <label className="control">

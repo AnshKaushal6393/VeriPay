@@ -1,5 +1,19 @@
 const prisma = require('../lib/prisma')
 
+const normalizeVendorRiskScore = (vendor) => {
+  const invoiceCount =
+    vendor?._count?.invoices ?? vendor?.invoices?.length ?? 0
+
+  if (invoiceCount < 3) {
+    return {
+      ...vendor,
+      riskScore: null,
+    }
+  }
+
+  return vendor
+}
+
 const validateVendorPayload = (payload) => {
   const { name, category, contactEmail, paymentTerms } = payload
 
@@ -58,15 +72,24 @@ const getVendors = async (req, res) => {
 
     const vendors = await prisma.vendor.findMany({
       where: filters.length ? { AND: filters } : {},
+      include: {
+        _count: {
+          select: {
+            invoices: true,
+          },
+        },
+      },
       orderBy: {
         createdAt: 'desc',
       },
     })
 
+    const normalizedVendors = vendors.map(normalizeVendorRiskScore)
+
     return res.status(200).json({
       success: true,
-      count: vendors.length,
-      vendors,
+      count: normalizedVendors.length,
+      vendors: normalizedVendors,
     })
   } catch (error) {
     return res.status(500).json({
@@ -102,9 +125,11 @@ const getVendorById = async (req, res) => {
       })
     }
 
+    const normalizedVendor = normalizeVendorRiskScore(vendor)
+
     return res.status(200).json({
       success: true,
-      vendor,
+      vendor: normalizedVendor,
     })
   } catch (error) {
     return res.status(500).json({
@@ -134,7 +159,6 @@ const createVendor = async (req, res) => {
         contactPhone: req.body.contactPhone?.trim() || null,
         paymentTerms: Number(req.body.paymentTerms),
         address: req.body.address?.trim() || null,
-        riskScore: Number(req.body.riskScore ?? 0),
       },
     })
 
@@ -174,7 +198,6 @@ const updateVendor = async (req, res) => {
         contactPhone: req.body.contactPhone?.trim() || null,
         paymentTerms: Number(req.body.paymentTerms),
         address: req.body.address?.trim() || null,
-        riskScore: Number(req.body.riskScore ?? 0),
       },
     })
 

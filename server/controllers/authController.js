@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const prisma = require('../lib/prisma')
+const { getPrismaErrorDetails } = require('../utils/prismaError')
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret'
 
@@ -64,10 +65,12 @@ const register = async (req, res) => {
       user,
     })
   } catch (error) {
-    return res.status(500).json({
+    const prismaError = getPrismaErrorDetails(error)
+
+    return res.status(prismaError.status).json({
       success: false,
-      message: 'Failed to register user',
-      error: error.message,
+      message: prismaError.message,
+      error: prismaError.details,
     })
   }
 }
@@ -118,10 +121,12 @@ const login = async (req, res) => {
       },
     })
   } catch (error) {
-    return res.status(500).json({
+    const prismaError = getPrismaErrorDetails(error)
+
+    return res.status(prismaError.status).json({
       success: false,
-      message: 'Failed to login',
-      error: error.message,
+      message: prismaError.message,
+      error: prismaError.details,
     })
   }
 }

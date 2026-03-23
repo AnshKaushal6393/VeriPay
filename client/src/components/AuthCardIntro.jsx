@@ -8,10 +8,11 @@ function AuthCardIntro({ eyebrow, title, description }) {
       </div>
 
       <div className="login-brand">
-        <span className="brand-mark">VP</span>
-        <div>
+        <span className="brand-mark auth-brand-mark">VP</span>
+        <div className="auth-copy">
           <p className="eyebrow">{eyebrow}</p>
           <h1>{title}</h1>
+          <p className="auth-kicker">Enterprise workspace access</p>
         </div>
       </div>
 

@@ -57,7 +57,7 @@ model Vendor {
   category      String
   paymentTerms  Int
   address       String?
-  riskScore     Float    @default(0)
+  riskScore     Float?
   invoices      Invoice[]
   createdAt     DateTime @default(now())
 }
