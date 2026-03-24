@@ -87,6 +87,10 @@ function InvoicesPage() {
     return 'review'
   }
 
+  const getInvoiceDisplayNumber = (invoice) => (
+    invoice.invoiceNumber || `Draft-${invoice.id.slice(0, 8).toUpperCase()}`
+  )
+
   const createInvoiceMutation = useMutation({
     mutationFn: async (values) => {
       const formData = new FormData()
@@ -397,7 +401,7 @@ function InvoicesPage() {
                         <span className="table-mono">{invoice.currency}</span>
                       </td>
                       <td className="invoice-id-cell">
-                        <span className="table-mono">{invoice.id.slice(0, 12)}</span>
+                        <span className="table-mono">{getInvoiceDisplayNumber(invoice)}</span>
                       </td>
                     </tr>
                   ))

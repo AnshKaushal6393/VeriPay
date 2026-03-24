@@ -105,3 +105,14 @@
 - Added a protected invoice listing API at `GET /api/invoices` with filters for `status`, `vendorId`, `dateFrom`, and `dateTo`, and built a new frontend invoice directory page with status/vendor/date-range controls, KPI summary cards, and a filterable invoice table wired into the shared workspace app shell
 
 - Added a reusable InvoiceForm with dual manual-entry and PDF-upload tabs, drag-and-drop PDF parsing preview, parsed-to-manual prefill confirmation, editable item list, and safe user review before invoice submission without auto-submitting extracted PDF data
+- Added human-friendly invoice numbering with a separate `invoiceNumber` field while keeping Prisma internal IDs for relations.
+- Invoice creation now auto-generates display numbers like `INV-YYYYMMDD-0001`, and invoice tables show that number instead of raw long IDs.
+- Added a one-time backfill script for older invoices so existing records can also receive proper invoice numbers.
+- Added a daily midnight cron job that automatically marks eligible invoices as `OVERDUE` once their due date has passed.
+- Fixed auth refresh routing so protected pages stay on their current route after reload instead of bouncing back to `/vendors`.
+- Added a reusable overdue scoring utility for invoices. API invoice responses now include `daysLate` and `overdueScore` based on due-date age bands.
+- Added a reusable amount scoring utility for invoices. API invoice responses now also include `amountScore` based on invoice value bands.
+- Added a reusable `historyScore(vendorId)` utility that queries vendor invoice history with a Prisma transaction and returns a behavior-based score out of 30.
+- Added a reusable `disputeScore(invoiceId)` utility that returns a binary dispute-risk score based on whether an invoice has any unresolved disputes.
+- Combined overdue, amount, history, and dispute scoring into a main `calculateRiskScore(invoice, vendor)` utility that updates both the invoice `riskScore` and the vendor's rolling average risk score.
+- Added invoice status risk refresh automation: risk is now recalculated on invoice creation, on manual invoice status updates, and when the midnight overdue sweep changes invoice status to `OVERDUE`.

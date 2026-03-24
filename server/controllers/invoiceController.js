@@ -1,5 +1,9 @@
 const prisma = require('../lib/prisma')
 const fs = require('fs')
+const { generateInvoiceNumber } = require('../utils/invoiceNumber')
+const { overdueScore, getDaysLate } = require('../utils/overdueScore')
+const { amountScore } = require('../utils/amountScore')
+const { refreshInvoiceRisk } = require('../utils/refreshInvoiceRisk')
 
 const allowedStatuses = new Set([
   'PENDING',
@@ -29,6 +33,13 @@ const cleanupUploadedFile = (file) => {
     // Best-effort cleanup only.
   }
 }
+
+const decorateInvoiceWithOverdueScore = (invoice) => ({
+  ...invoice,
+  daysLate: getDaysLate(invoice),
+  overdueScore: overdueScore(invoice),
+  amountScore: amountScore(invoice.amount),
+})
 
 const validateInvoicePayload = (payload) => {
   const { vendorId, amount, dueDate, currency, status, slaDeadline, slaBreach } = payload
@@ -66,6 +77,29 @@ const validateInvoicePayload = (payload) => {
   }
 
   return null
+}
+
+const validateInvoiceStatus = (status) => {
+  const normalizedStatus = String(status || '').trim().toUpperCase()
+
+  if (!normalizedStatus) {
+    return {
+      error: 'Invoice status is required',
+      status: null,
+    }
+  }
+
+  if (!allowedStatuses.has(normalizedStatus)) {
+    return {
+      error: 'Invoice status is invalid',
+      status: null,
+    }
+  }
+
+  return {
+    error: null,
+    status: normalizedStatus,
+  }
 }
 
 const listInvoices = async (req, res) => {
@@ -141,7 +175,7 @@ const listInvoices = async (req, res) => {
     return res.status(200).json({
       success: true,
       count: invoices.length,
-      invoices,
+      invoices: invoices.map(decorateInvoiceWithOverdueScore),
     })
   } catch (error) {
     return res.status(500).json({
@@ -191,6 +225,7 @@ const createInvoice = async (req, res) => {
 
     const invoice = await prisma.invoice.create({
       data: {
+        invoiceNumber: await generateInvoiceNumber(),
         vendorId: vendor.id,
         amount: Number(req.body.amount),
         currency: req.body.currency?.trim().toUpperCase() || 'INR',
@@ -210,10 +245,12 @@ const createInvoice = async (req, res) => {
       },
     })
 
+    const refreshedInvoice = await refreshInvoiceRisk(invoice.id)
+
     return res.status(201).json({
       success: true,
       message: 'Invoice created successfully',
-      invoice,
+      invoice: decorateInvoiceWithOverdueScore(refreshedInvoice || invoice),
       document: req.file
         ? {
             filename: req.file.filename,
@@ -234,7 +271,62 @@ const createInvoice = async (req, res) => {
   }
 }
 
+const updateInvoiceStatus = async (req, res) => {
+  try {
+    const { error: statusError, status: normalizedStatus } = validateInvoiceStatus(
+      req.body.status,
+    )
+
+    if (statusError) {
+      return res.status(400).json({
+        success: false,
+        message: statusError,
+      })
+    }
+
+    const existingInvoice = await prisma.invoice.findUnique({
+      where: {
+        id: req.params.id,
+      },
+      select: {
+        id: true,
+      },
+    })
+
+    if (!existingInvoice) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invoice not found',
+      })
+    }
+
+    await prisma.invoice.update({
+      where: {
+        id: req.params.id,
+      },
+      data: {
+        status: normalizedStatus,
+      },
+    })
+
+    const refreshedInvoice = await refreshInvoiceRisk(req.params.id)
+
+    return res.status(200).json({
+      success: true,
+      message: 'Invoice status updated successfully',
+      invoice: decorateInvoiceWithOverdueScore(refreshedInvoice),
+    })
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update invoice status',
+      error: error.message,
+    })
+  }
+}
+
 module.exports = {
   createInvoice,
   listInvoices,
+  updateInvoiceStatus,
 }

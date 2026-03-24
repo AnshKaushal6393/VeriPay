@@ -3,6 +3,7 @@ const cors = require('cors')
 const dotenv = require('dotenv')
 const prisma = require('./lib/prisma')
 const { getPrismaErrorDetails } = require('./utils/prismaError')
+const { startOverdueInvoiceJob, runOverdueInvoiceSweep } = require('./jobs/overdueInvoiceJob')
 
 dotenv.config({ path: require('path').resolve(__dirname, '.env') })
 
@@ -55,4 +56,6 @@ app.get('/api/health/db', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
+  startOverdueInvoiceJob()
+  runOverdueInvoiceSweep()
 })

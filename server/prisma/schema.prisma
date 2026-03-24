@@ -64,6 +64,7 @@ model Vendor {
 
 model Invoice {
   id            String        @id @default(cuid())
+  invoiceNumber String?       @unique
   vendorId      String
   vendor        Vendor        @relation(fields:[vendorId],references:[id])
   amount        Decimal       @db.Decimal(12, 2)

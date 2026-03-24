@@ -54,6 +54,10 @@ function VendorDetailPage() {
     return 'review'
   }
 
+  const getInvoiceDisplayNumber = (invoice) => (
+    invoice.invoiceNumber || `Draft-${invoice.id.slice(0, 8).toUpperCase()}`
+  )
+
   return (
     <main className="app-shell">
       <AppHeader
@@ -191,7 +195,7 @@ function VendorDetailPage() {
                       return (
                         <tr key={invoice.id}>
                           <td className="invoice-id-cell">
-                            <span className="table-mono">{invoice.id.slice(0, 8)}</span>
+                            <span className="table-mono">{getInvoiceDisplayNumber(invoice)}</span>
                           </td>
                           <td className="status-column">
                             <span

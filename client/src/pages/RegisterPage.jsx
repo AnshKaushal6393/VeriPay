@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../lib/api'
 import { notifyError, notifySuccess } from '../lib/notify'
@@ -8,7 +8,8 @@ import AuthCardIntro from '../components/AuthCardIntro'
 
 function RegisterPage() {
   const navigate = useNavigate()
-  const { isAuthenticated, login } = useAuth()
+  const location = useLocation()
+  const { isAuthenticated, isAuthReady, login } = useAuth()
 
   const {
     register,
@@ -57,8 +58,12 @@ function RegisterPage() {
     },
   })
 
+  if (!isAuthReady) {
+    return null
+  }
+
   if (isAuthenticated) {
-    return <Navigate to="/vendors" replace />
+    return <Navigate to={location.state?.from?.pathname || '/vendors'} replace />
   }
 
   return (

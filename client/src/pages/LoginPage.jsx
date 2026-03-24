@@ -9,7 +9,7 @@ import AuthCardIntro from '../components/AuthCardIntro'
 function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAuthenticated, login } = useAuth()
+  const { isAuthenticated, isAuthReady, login } = useAuth()
 
   const {
     register,
@@ -46,8 +46,12 @@ function LoginPage() {
     },
   })
 
+  if (!isAuthReady) {
+    return null
+  }
+
   if (isAuthenticated) {
-    return <Navigate to="/vendors" replace />
+    return <Navigate to={location.state?.from?.pathname || '/vendors'} replace />
   }
 
   return (
